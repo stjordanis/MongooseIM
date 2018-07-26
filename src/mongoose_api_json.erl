@@ -15,6 +15,8 @@
 %%==============================================================================
 -module(mongoose_api_json).
 
+-include("mongoose.hrl").
+
 -behaviour(mongoose_api_format).
 
 %% mongoose_api_format callbacks
