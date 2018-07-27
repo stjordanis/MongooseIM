@@ -32,32 +32,32 @@ all() ->
      ].
 
 groups() ->
-    G = [{parallel, [parallel], parallel_test_cases()},
+    G = [{parallel, [parallel, {repeat_until_any_fail, 500}], parallel_test_cases()},
          {parallel_manual_ack_freq_1, [parallel], parallel_manual_ack_test_cases()},
          {manual_ack_freq_long_session_timeout, [parallel], [preserve_order]}],
     ct_helper:repeat_all_until_all_ok(G).
 
 parallel_test_cases() ->
-    [server_announces_sm,
-     server_enables_sm_before_session,
-     server_enables_sm_after_session,
-     server_returns_failed_after_start,
-     server_returns_failed_after_auth,
-     server_enables_resumption,
-     basic_ack,
-     h_ok_before_session,
-     h_ok_after_session_enabled_before_session,
-     h_ok_after_session_enabled_after_session,
-     h_ok_after_a_chat,
-     resend_unacked_on_reconnection, % TODO fix it #1638
-     session_established,
-     wait_for_resumption,
-     resume_session,
-     resume_session_with_wrong_h_does_not_leak_sessions,
-     resume_session_with_wrong_sid_returns_item_not_found,
-     resume_session_with_wrong_namespace_is_a_noop,
-     resume_dead_session_results_in_item_not_found,
-     aggressively_pipelined_resume
+    [% server_announces_sm,
+    %server_enables_sm_before_session,
+    %server_enables_sm_after_session,
+    %server_returns_failed_after_start,
+    %server_returns_failed_after_auth,
+    %server_enables_resumption,
+    %basic_ack,
+    %h_ok_before_session,
+    %h_ok_after_session_enabled_before_session,
+    %h_ok_after_session_enabled_after_session,
+    %h_ok_after_a_chat,
+     resend_unacked_on_reconnection % TODO fix it #1638
+    % session_established,
+    % wait_for_resumption,
+    % resume_session,
+    % resume_session_with_wrong_h_does_not_leak_sessions,
+    % resume_session_with_wrong_sid_returns_item_not_found,
+    % resume_session_with_wrong_namespace_is_a_noop,
+    % resume_dead_session_results_in_item_not_found,
+    % aggressively_pipelined_resume
     ].
 
 parallel_manual_ack_test_cases() ->
