@@ -916,8 +916,23 @@ check_for_sessions_to_replace(User, Server, Resource) ->
     %% replacement for max_sessions. We need to check this at some point.
     ReplacedRedundantSessions = check_existing_resources(LUser, LServer, LResource),
     AllReplacedSessionPids = check_max_sessions(LUser, LServer, ReplacedRedundantSessions),
-    [Pid ! replaced || Pid <- AllReplacedSessionPids],
+    [ Pid ! replaced || Pid <- AllReplacedSessionPids ],
+    ok = monitor_replaced(AllReplacedSessionPids),
+    ok = wait_for_replaced_down(AllReplacedSessionPids),
     AllReplacedSessionPids.
+
+monitor_replaced(Pids) ->
+    [ erlang:monitor(process, P) || P <- Pids ],
+    ok.
+
+wait_for_replaced_down(Pids) ->
+    [ receive
+          {'DOWN', _MRef, _Type, P, _Info} ->
+              ok
+          after timer:seconds(1) ->
+              ok
+      end || P <- Pids ],
+    ok.
 
 -spec check_existing_resources(LUser, LServer, LResource) -> ReplacedSessionsPIDs when
       LUser :: 'error' | jid:luser() | tuple(),
