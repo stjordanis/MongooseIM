@@ -914,14 +914,15 @@ check_for_sessions_to_replace(User, Server, Resource) ->
 
     %% TODO: Depending on how this is executed, there could be an unneeded
     %% replacement for max_sessions. We need to check this at some point.
+    Context = ets:tab2list(session),
     ReplacedRedundantSessions = check_existing_resources(LUser, LServer, LResource),
     AllReplacedSessionPids = check_max_sessions(LUser, LServer, ReplacedRedundantSessions),
     [ Pid ! replaced || Pid <- AllReplacedSessionPids ],
-    ok = monitor_replaced(AllReplacedSessionPids),
+    ok = monitor_replaced(AllReplacedSessionPids, Context),
     ok = wait_for_replaced_down(AllReplacedSessionPids),
     AllReplacedSessionPids.
 
-monitor_replaced(Pids) ->
+monitor_replaced(Pids, _) ->
     [ erlang:monitor(process, P) || P <- Pids ],
     ok.
 

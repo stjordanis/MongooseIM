@@ -1633,8 +1633,12 @@ print_state(State = #state{pres_t = T, pres_f = F, pres_a = A, pres_i = I}) ->
 %% Purpose: Shutdown the fsm
 %% Returns: any
 %%----------------------------------------------------------------------
+
+debug_session_table(_, _, _) -> ok.
+
 -spec terminate(Reason :: any(), statename(), state()) -> ok.
 terminate(_Reason, StateName, StateData) ->
+    debug_session_table(terminate_init, self(), ets:tab2list(session)),
     case {should_close_session(StateName), StateData#state.authenticated} of
         {false, _} ->
             ok;
@@ -1658,6 +1662,7 @@ terminate(_Reason, StateName, StateData) ->
               StateData#state.resource,
               <<"Replaced by new connection">>,
               replaced),
+            debug_session_table(terminate_replaced_closed, self(), ets:tab2list(session)),
             Acc1 = presence_broadcast(Acc, StateData#state.pres_a, StateData),
             presence_broadcast(Acc1, StateData#state.pres_i, StateData),
             reroute_unacked_messages(StateData);
@@ -1677,31 +1682,48 @@ terminate(_Reason, StateName, StateData) ->
                        pres_a = EmptySet,
                        pres_i = EmptySet,
                        pres_invis = false} ->
-                    ejabberd_sm:close_session(StateData#state.sid,
-                                              StateData#state.user,
-                                              StateData#state.server,
-                                              StateData#state.resource,
-                                              normal);
+                    mark_session_as_terminating(StateData);
                 _ ->
                     From = StateData#state.jid,
                     Packet = #xmlel{name = <<"presence">>,
                                     attrs = [{<<"type">>, <<"unavailable">>}]},
                     Acc0 = element_to_origin_accum(Packet, StateData),
                     Acc = mongoose_acc:put(from_jid, From, Acc0),
-                    ejabberd_sm:close_session_unset_presence(
-                      StateData#state.sid,
-                      StateData#state.user,
-                      StateData#state.server,
-                      StateData#state.resource,
-                      <<"">>,
-                      normal),
+                    mark_session_as_terminating(Acc, StateData),
+                    ejabberd_sm:store_info(terminating),
                     Acc1 = presence_broadcast(Acc, StateData#state.pres_a, StateData),
                     presence_broadcast(Acc1, StateData#state.pres_i, StateData)
             end,
-            reroute_unacked_messages(StateData)
+            debug_session_table(terminate_catchall_closed, self(), ets:tab2list(session)),
+            reroute_unacked_messages(StateData),
+            ejabberd_sm:close_session(StateData#state.sid,
+                                      StateData#state.user,
+                                      StateData#state.server,
+                                      StateData#state.resource,
+                                      normal)
     end,
     (StateData#state.sockmod):close(StateData#state.socket),
     ok.
+
+mark_session_as_terminating(StateData) ->
+    TerminatingKV = {terminating, true},
+    ejabberd_sm:store_info(StateData#state.user,
+                           StateData#state.server,
+                           StateData#state.resource,
+                           TerminatingKV).
+
+mark_session_as_terminating(Acc, StateData) ->
+    TerminatingKV = {terminating, true},
+    Info = [{ip, StateData#state.ip}, {conn, StateData#state.conn},
+            {auth_module, StateData#state.auth_module},
+            TerminatingKV],
+    ejabberd_sm:unset_presence(Acc,
+                               StateData#state.sid,
+                               StateData#state.user,
+                               StateData#state.server,
+                               StateData#state.resource,
+                               _Status = <<>>,
+                               Info).
 
 -spec reroute_unacked_messages(StateData :: state()) -> any().
 reroute_unacked_messages(StateData) ->
